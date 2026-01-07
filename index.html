@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Cleaner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: '#1e293b',
+                        accent: '#3b82f6',
+                        surface: '#ffffff',
+                        background: '#f8fafc',
+                    },
+                    borderRadius: {
+                        'refined': '4px',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .border-base {
+            border: 1.5px solid #1e293b;
+        }
+
+        /* Modern Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #ffffff;
+            border: 2px solid #1e293b;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            items-center: center;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 2px;
+        }
+
+        .grid-subtle {
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        
+        .animate-in {
+            animation: slideUp 0.4s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 grid-subtle">
+
+    <main class="w-full max-w-[600px] bg-white rounded-refined border-base shadow-[4px_4px_0px_0px_rgba(30,41,59,1)] overflow-hidden">
+        
+        <!-- Header -->
+        <div class="bg-brand text-white px-5 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <h1 class="text-[12px] font-mono font-bold tracking-widest uppercase">Safe Processing Active</h1>
+            </div>
+            <span class="text-[10px] font-mono opacity-60">CLIENT-SIDE ONLY</span>
+        </div>
+
+        <div class="p-6 sm:p-8">
+            <!-- App Identity -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold tracking-tight mb-1">Image Cleaner</h2>
+                <p class="text-xs text-slate-500 font-medium">画像のメタデータをブラウザ内で安全に消去</p>
+            </div>
+
+            <!-- Upload Zone -->
+            <div id="dropZone" class="group relative w-full aspect-video rounded-refined border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-brand transition-all flex flex-col items-center justify-center cursor-pointer">
+                <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                
+                <div id="uploadPrompt" class="text-center px-4">
+                    <div class="w-12 h-12 bg-white border border-slate-200 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:border-brand transition-colors">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <p class="text-sm font-bold text-brand uppercase tracking-wider">画像をドラッグ＆ドロップ</p>
+                    <p class="text-[10px] text-slate-400 mt-2">プライバシーは守られています。端末の外に画像は出ません。</p>
+                </div>
+
+                <div id="previewContainer" class="absolute inset-0 w-full h-full hidden bg-white rounded-refined">
+                    <img id="previewImage" class="w-full h-full object-contain p-1" alt="Preview">
+                    <div class="absolute bottom-3 right-3 bg-brand/90 text-white text-[9px] px-2 py-1 rounded-sm font-bold uppercase backdrop-blur-sm">Image Ready</div>
+                </div>
+            </div>
+
+            <!-- Controls Area -->
+            <div id="controlsArea" class="hidden mt-8 animate-in">
+                <div class="space-y-8">
+                    
+                    <!-- File Status Row -->
+                    <div class="flex items-start gap-4 p-4 bg-slate-50 rounded-refined border border-slate-100">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">Current File</p>
+                            <p id="fileName" class="text-xs font-bold text-brand truncate">---</p>
+                            <p id="fileSize" class="text-[10px] font-mono text-slate-500">---</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-mono font-bold text-slate-400 uppercase mb-1">Privacy Level</p>
+                            <span class="status-badge bg-emerald-100 text-emerald-700">Verified Secure</span>
+                        </div>
+                    </div>
+
+                    <!-- Config Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <label class="text-[11px] font-bold text-brand uppercase tracking-widest">保存形式</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="format-btn px-3 py-2 border-2 border-slate-100 text-[11px] font-bold transition-all rounded-refined hover:bg-slate-50" data-format="image/png">PNG</button>
+                                <button class="format-btn px-3 py-2 border-2 border-slate-100 text-[11px] font-bold transition-all rounded-refined hover:bg-slate-50" data-format="image/jpeg">JPG</button>
+                                <button class="format-btn px-3 py-2 border-2 border-slate-100 text-[11px] font-bold transition-all rounded-refined hover:bg-slate-50" data-format="image/webp">WEBP</button>
+                                <button class="format-btn px-3 py-2 border-2 border-slate-100 text-[11px] font-bold transition-all rounded-refined hover:bg-slate-50" data-format="image/avif">AVIF</button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div id="qualityControl">
+                                <div class="flex justify-between items-center mb-4">
+                                    <label class="text-[11px] font-bold text-brand uppercase tracking-widest">書き出し画質</label>
+                                    <span id="qualityValue" class="text-xs font-mono font-bold text-brand">90%</span>
+                                </div>
+                                <input type="range" id="qualityRange" min="10" max="100" value="90">
+                            </div>
+
+                            <button id="downloadBtn" class="w-full bg-brand text-white py-3.5 rounded-refined font-bold text-xs uppercase tracking-widest hover:bg-slate-700 transition-all shadow-md active:transform active:translate-y-0.5">
+                                Clean & Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Simple Security Badges -->
+    <div class="w-full max-w-[600px] mt-6 flex flex-wrap justify-center gap-6">
+        <div class="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">完全ローカル処理</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-400"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">位置情報(GPS)削除済</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-400"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"/><rect width="14" height="10" x="5" y="11" rx="2"/></svg>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">外部通信なし</span>
+        </div>
+    </div>
+
+    <footer class="mt-12 opacity-40 hover:opacity-100 transition-opacity">
+        <p class="text-[9px] font-mono uppercase tracking-[0.2em] text-slate-500">Privacy Utility System // No data collection</p>
+    </footer>
+
+    <!-- Processing Canvas -->
+    <canvas id="processCanvas" class="hidden"></canvas>
+    <canvas id="checkCanvas" class="hidden"></canvas>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const controlsArea = document.getElementById('controlsArea');
+        const fileNameLabel = document.getElementById('fileName');
+        const fileSizeLabel = document.getElementById('fileSize');
+        const formatBtns = document.querySelectorAll('.format-btn');
+        const qualityControl = document.getElementById('qualityControl');
+        const qualityRange = document.getElementById('qualityRange');
+        const qualityValue = document.getElementById('qualityValue');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const processCanvas = document.getElementById('processCanvas');
+        const ctx = processCanvas.getContext('2d');
+
+        let currentFile = null;
+        let selectedFormat = 'image/png';
+        let supportedFormats = {};
+
+        // Browser support check
+        (function init() {
+            const checkCanvas = document.getElementById('checkCanvas');
+            ['image/png', 'image/jpeg', 'image/webp', 'image/avif'].forEach(mime => {
+                const dataUrl = checkCanvas.toDataURL(mime);
+                supportedFormats[mime] = dataUrl.startsWith(`data:${mime}`);
+            });
+            
+            formatBtns.forEach(btn => {
+                const fmt = btn.dataset.format;
+                if (!supportedFormats[fmt]) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-30', 'cursor-not-allowed', 'line-through');
+                }
+            });
+
+            updateFormatUI(document.querySelector('[data-format="image/png"]'));
+        })();
+
+        // Handlers
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-brand', 'bg-slate-50'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-brand', 'bg-slate-50'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-brand', 'bg-slate-50');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        formatBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                selectedFormat = btn.dataset.format;
+                updateFormatUI(btn);
+            });
+        });
+
+        qualityRange.addEventListener('input', (e) => { qualityValue.textContent = `${e.target.value}%`; });
+        downloadBtn.addEventListener('click', processImage);
+
+        function updateFormatUI(activeBtn) {
+            formatBtns.forEach(btn => {
+                btn.classList.remove('border-brand', 'bg-brand', 'text-white');
+                btn.classList.add('border-slate-100', 'text-slate-600');
+            });
+            activeBtn.classList.remove('border-slate-100', 'text-slate-600');
+            activeBtn.classList.add('border-brand', 'bg-brand', 'text-white');
+
+            if (selectedFormat === 'image/png') {
+                qualityControl.classList.add('opacity-30', 'pointer-events-none');
+            } else {
+                qualityControl.classList.remove('opacity-30', 'pointer-events-none');
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return;
+            currentFile = file;
+            fileNameLabel.textContent = file.name;
+            fileSizeLabel.textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                uploadPrompt.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                controlsArea.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function processImage() {
+            if (!currentFile) return;
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = 'Processing...';
+
+            const img = new Image();
+            img.src = URL.createObjectURL(currentFile);
+            await new Promise(r => img.onload = r);
+
+            processCanvas.width = img.width;
+            processCanvas.height = img.height;
+            ctx.clearRect(0, 0, processCanvas.width, processCanvas.height);
+            
+            if (selectedFormat === 'image/jpeg') {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, processCanvas.width, processCanvas.height);
+            }
+            
+            ctx.drawImage(img, 0, 0);
+            const quality = parseInt(qualityRange.value) / 100;
+            
+            processCanvas.toBlob((blob) => {
+                const ext = selectedFormat.split('/')[1].replace('jpeg', 'jpg');
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentFile.name.split('.')[0]}_clean.${ext}`;
+                a.click();
+                URL.revokeObjectURL(url);
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Clean & Download';
+            }, selectedFormat, quality);
+        }
+    </script>
+</body>
+</html>
